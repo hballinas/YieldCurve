@@ -10,6 +10,9 @@ hitheme     : tomorrow      #
 widgets     : []            # {mathjax, quiz, bootstrap}
 mode        : selfcontained # {standalone, draft}
 knit        : slidify::knit2slides
+github      :
+  user: hballinas
+  repo: Developing-Data-Products/Week_4
 
 --- .class #id 
 
