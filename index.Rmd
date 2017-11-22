@@ -1,0 +1,137 @@
+---
+title       : Dynamic Yield Curve
+subtitle    : Market Crash Predictor
+author      : Horacio Ballinas
+date        : November 21, 2017 
+job         : Developing Data Projects Course Project
+framework   : io2012        # {io2012, html5slides, shower, dzslides, ...}
+highlighter : highlight.js  # {highlight.js, prettify, highlight}
+hitheme     : tomorrow      # 
+widgets     : []            # {mathjax, quiz, bootstrap}
+mode        : selfcontained # {standalone, draft}
+knit        : slidify::knit2slides
+
+--- .class #id 
+
+## Why is the Yield Curve so important?
+
+
+>1. The Secret To Success combines Good Returns with Good Risk Management
+
+>2. What Good Are Good Returns If We Don't Know When To Exit?
+
+>3. "Stock valuations make sense in 2017 with interest rates where they are" - Warren Buffett
+
+---
+## Slide 2
+
+The Dynamic Yield Curve app let you visualize how the interest rates at different maturity dates have behaved in the past (A graph showing these Interest Rates at different maturity dates is called the Yield Curve).  You'll notice that right before every market crash, the yield curve inverts. The Yield Curve is the Best Predictor Known to Man that a Market Crash is Imminent. 
+
+---
+## Slide 3
+> First, we load the interest rates datasets from the FED and the S&P from Yahoo Finance...
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+library(quantmod)
+library(plotrix)
+interestrates <- vector(mode="numeric", length=c(8))
+names(interestrates) <- c("DGS3MO", "DGS1", "DGS2", "DGS5", "DGS7", "DGS10", "DGS20", "DGS30")
+env=globalenv()
+
+getSymbols("DGS3MO", src = "FRED", from = as.Date("2000-12-01"), to = Sys.Date(), env = env)
+getSymbols("DGS1", src = "FRED", from = as.Date("2000-12-01"), to = Sys.Date(), env = env)
+getSymbols("DGS2", src = "FRED", from = as.Date("2000-12-01"), to = Sys.Date(), env = env)
+getSymbols("DGS5", src = "FRED", from = as.Date("2000-12-01"), to = Sys.Date(), env = env)
+getSymbols("DGS7", src = "FRED", from = as.Date("2000-12-01"), to = Sys.Date(), env = env)
+getSymbols("DGS10", src = "FRED", from = as.Date("2000-12-01"), to = Sys.Date(), env = env)
+getSymbols("DGS20", src = "FRED", from = as.Date("2000-12-01"), to = Sys.Date(), env = env)
+getSymbols("DGS30", src = "FRED", from = as.Date("2000-12-01"), to = Sys.Date(), env = env)
+
+getSymbols("^GSPC", from = as.Date("2000-12-01"), to = Sys.Date(), env = env)
+
+#Clean the data
+DGS3MO<-na.approx(DGS3MO)
+DGS1<-na.approx(DGS1)
+DGS2<-na.approx(DGS2)
+DGS5<-na.approx(DGS5)
+DGS7<-na.approx(DGS7)
+DGS10<-na.approx(DGS10)
+DGS20<-na.approx(DGS20)
+DGS30<-na.approx(DGS30)
+GSPC<-na.approx(GSPC)
+
+```
+
+---
+## Slide 4
+
+The app let's you visualize the market and yield curve at any date using a slider
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+mydate<-as.character(Sys.Date()-1)
+marketopendays<-time(GSPC)
+firstday<-min(marketopendays)
+lastday<-max(marketopendays)
+maxclose<-max(GSPC[,6])
+minclose<-min(GSPC[,6])
+interestratesdays<-time(DGS1)
+lastdayir<-max(interestratesdays)
+DateRange <- seq(firstday, lastday, by = 1) #this is needed to find the total number of days in the time series including Saturdays and Sundays
+
+#DateRange[!DateRange %in% marketopendays] #It returns all the days not in the dataset.  Not needed at this point
+
+numdays<-as.Date(mydate)-DateRange[1]  #Find the total number of days from mydate to the beginning of the series
+numdays<-as.numeric(numdays)  #convert it to a number
+numdays<-numdays+1 #The sequence starts at 1, so you need to add one to get the right answer
+
+#DateRange[numdays]  #this is my date
+
+
+#GSPC[,6][mydate]
+
+marketcloseexists <- function(datetolookup) {
+  datetoplot<-datetolookup
+  marketcloseinmydate<-as.numeric(GSPC[,6][datetolookup])
+  if(identical(marketcloseinmydate, numeric(0))){
+    newdate<-as.Date(mydate)-1
+    if (identical(as.numeric(GSPC[,6][newdate]), numeric(0))){
+    datetoplot<-as.Date(mydate)+1
+    } else {
+    datetoplot<-newdate
+    }
+  }
+return(datetoplot)
+}
+
+ 
+mydate<-as.character("2017-11-13")
+datetoplotline<-marketcloseexists(mydate)
+marketopendays_label=as.character(marketopendays)
+plot.ts(x=as.Date(marketopendays), y=GSPC[,6], ylab="S&P", xlab=c("Date"), type='l',ylim=c(minclose, maxclose))
+#axis(1, at=marketopendays, las=2, cex.axis=0.85 )
+abline(v=as.Date(datetoplotline), col="red", lwd=3, lty=2)
+legend("topleft", as.character(datetoplotline), cex = 0.8)
+```
+
+---
+## Slide 5
+Please note that the yield curve is flattening in 2017.  I recommend you monitor this graph closely and take action if the curve inverts.  
+```{r , echo=FALSE, warning=FALSE, message=FALSE}
+if(datetoplotline>lastdayir){
+  datetoplotline<-lastdayir
+} 
+for (i in 1:length(names(interestrates))){
+  interestrates[i] <- as.numeric(env[[names(interestrates)[i]]][datetoplotline])
+}
+
+g_range <- range(0, interestrates)
+
+plot(interestrates, type="l", pch=16, xlab=c("Interest Rates At Different Maturity"), ylab="Interest Rates (%)", xaxt='n', ylim = c(0,6), log = "x")
+legend(1, g_range[2], datetoplotline, cex = 0.8)
+axis(1, at=1:8, las=2, lab=c("3MO", "1YR", "2YR", "5YR", "7YR", "10YR", "20YR", "DGS30"), log = "x", xlim=rev(range(interestrates)))
+
+box()
+title(main="Dynamic Yield Curve", col.main="red", font.main=4)
+
+
+```
+
+
